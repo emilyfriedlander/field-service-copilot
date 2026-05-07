@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from data_loader import load_jobs
-from copilot import ask, ask_training
+from copilot import ask
 
 # ---------------------------------------------------------------------------
 # Page config
@@ -98,7 +98,7 @@ if len(date_range) == 2:
 # Tabs
 # ---------------------------------------------------------------------------
 
-tab_dash, tab_copilot, tab_train = st.tabs(["📊  Dashboard", "💬  Copilot", "🎓  Tech Training"])
+tab_dash, tab_copilot = st.tabs(["📊  Dashboard", "💬  Copilot"])
 
 # ===========================================================================
 # TAB 1 — DASHBOARD
@@ -485,108 +485,3 @@ with tab_copilot:
             st.session_state["messages"] = []
             st.rerun()
 
-
-# ===========================================================================
-# TAB 3 — TECH TRAINING (RAG)
-# ===========================================================================
-
-with tab_train:
-
-    st.markdown("### HVAC Tech Training Assistant")
-    st.markdown(
-        "Ask technical questions about refrigeration, electrical, EPA 608, load calculations, "
-        "or troubleshooting. Answers are grounded in your knowledge base documents."
-    )
-
-    # Auto-ingest knowledge base if not yet built
-    from pathlib import Path as _Path
-    from retriever import ingest_directory as _ingest
-    _store = _Path(__file__).parent.parent / "data" / "tfidf_store.json"
-    if not _store.exists():
-        with st.spinner("Building knowledge base for the first time…"):
-            try:
-                _doc_dir = _Path(__file__).parent.parent / "data" / "hvac_education"
-                count = _ingest(_doc_dir)
-                st.success(f"Knowledge base built: {count} chunks indexed.")
-            except Exception as _e:
-                st.error(f"Failed to build knowledge base: {_e}")
-    chroma_ready = _store.exists()
-
-    if not chroma_ready:
-        st.warning("Knowledge base could not be built. Check that data/hvac_education/ contains .md files.")
-    else:
-        # Suggested technical questions
-        st.markdown("**Suggested questions:**")
-        tech_suggestions = [
-            "What are the normal superheat and subcooling ranges for R-410A?",
-            "What does a low suction pressure reading usually indicate?",
-            "Walk me through the EPA 608 recovery requirements before opening a system.",
-            "How do I test a run capacitor in the field?",
-            "What causes a furnace to lock out with a pressure switch fault?",
-            "What's the difference between a TXV and a fixed orifice metering device?",
-        ]
-        tcols = st.columns(2)
-        for i, s in enumerate(tech_suggestions):
-            if tcols[i % 2].button(s, key=f"tech_sug_{i}", use_container_width=True):
-                st.session_state.setdefault("train_messages", [])
-                st.session_state["train_messages"].append({"role": "user", "content": s})
-                st.session_state["pending_train_query"] = s
-
-        st.divider()
-
-        # Chat history
-        if "train_messages" not in st.session_state:
-            st.session_state["train_messages"] = []
-
-        for msg in st.session_state["train_messages"]:
-            with st.chat_message(msg["role"], avatar="🧑‍🔧" if msg["role"] == "user" else "📚"):
-                st.markdown(msg["content"])
-                if msg.get("sources"):
-                    with st.expander("Sources used", expanded=False):
-                        for src in msg["sources"]:
-                            st.markdown(
-                                f"**{src['title']}** (`{src['source']}`) — "
-                                f"relevance: {src['score']:.0%}\n\n> {src['text'][:300]}…"
-                            )
-
-        # Handle suggestion clicks
-        if "pending_train_query" in st.session_state:
-            query = st.session_state.pop("pending_train_query")
-            with st.chat_message("assistant", avatar="📚"):
-                with st.spinner("Searching knowledge base..."):
-                    answer, sources = ask_training(query)
-                st.markdown(answer)
-                with st.expander("Sources used", expanded=False):
-                    for src in sources:
-                        st.markdown(
-                            f"**{src['title']}** (`{src['source']}`) — "
-                            f"relevance: {src['score']:.0%}\n\n> {src['text'][:300]}…"
-                        )
-            st.session_state["train_messages"].append(
-                {"role": "assistant", "content": answer, "sources": sources}
-            )
-            st.rerun()
-
-        # Chat input
-        if prompt := st.chat_input("Ask a technical HVAC question...", key="train_input"):
-            st.session_state["train_messages"].append({"role": "user", "content": prompt})
-            with st.chat_message("user", avatar="🧑‍🔧"):
-                st.markdown(prompt)
-            with st.chat_message("assistant", avatar="📚"):
-                with st.spinner("Searching knowledge base..."):
-                    answer, sources = ask_training(prompt)
-                st.markdown(answer)
-                with st.expander("Sources used", expanded=False):
-                    for src in sources:
-                        st.markdown(
-                            f"**{src['title']}** (`{src['source']}`) — "
-                            f"relevance: {src['score']:.0%}\n\n> {src['text'][:300]}…"
-                        )
-            st.session_state["train_messages"].append(
-                {"role": "assistant", "content": answer, "sources": sources}
-            )
-
-        if st.session_state.get("train_messages"):
-            if st.button("Clear training chat", type="secondary", key="clear_train"):
-                st.session_state["train_messages"] = []
-                st.rerun()
