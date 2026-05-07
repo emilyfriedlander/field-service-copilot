@@ -498,15 +498,22 @@ with tab_train:
         "or troubleshooting. Answers are grounded in your knowledge base documents."
     )
 
-    # Check if ChromaDB is populated
+    # Auto-ingest knowledge base if not yet built
     from pathlib import Path as _Path
-    chroma_ready = (_Path(__file__).parent.parent / "data" / "tfidf_store.json").exists()
+    from retriever import ingest_directory as _ingest
+    _store = _Path(__file__).parent.parent / "data" / "tfidf_store.json"
+    if not _store.exists():
+        with st.spinner("Building knowledge base for the first time…"):
+            try:
+                _doc_dir = _Path(__file__).parent.parent / "data" / "hvac_education"
+                count = _ingest(_doc_dir)
+                st.success(f"Knowledge base built: {count} chunks indexed.")
+            except Exception as _e:
+                st.error(f"Failed to build knowledge base: {_e}")
+    chroma_ready = _store.exists()
 
     if not chroma_ready:
-        st.warning(
-            "Knowledge base not yet ingested. Run this first:\n\n"
-            "```bash\nPYTHONPATH=. python3 scripts/ingest_docs.py\n```"
-        )
+        st.warning("Knowledge base could not be built. Check that data/hvac_education/ contains .md files.")
     else:
         # Suggested technical questions
         st.markdown("**Suggested questions:**")
