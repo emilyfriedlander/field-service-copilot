@@ -1,12 +1,28 @@
 """Field service reporting copilot — Claude-powered Q&A with DataFrame tool use."""
 
 import json
+import os
 import traceback
 import anthropic
 import pandas as pd
+from dotenv import load_dotenv
 from data_loader import load_jobs, summary_stats
 
-CLIENT = anthropic.Anthropic()
+load_dotenv()
+
+
+def _get_api_key() -> str | None:
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key:
+        return key
+    try:
+        import streamlit as st
+        return st.secrets["ANTHROPIC_API_KEY"]
+    except Exception:
+        return None
+
+
+CLIENT = anthropic.Anthropic(api_key=_get_api_key())
 MODEL = "claude-opus-4-6"
 
 # ---------------------------------------------------------------------------
