@@ -123,6 +123,21 @@ def get_data() -> pd.DataFrame:
 
 df_full = get_data()
 
+# Ensure job_category exists even if data_loader version on server is older
+if "job_category" not in df_full.columns:
+    _INSTALL = {
+        "Zone Control Installation", "Mini-Split Installation", "Heat Pump Installation",
+        "Indoor Air Quality Install", "Furnace Replacement", "Air Handler Replacement",
+        "AC Replacement", "Thermostat Installation",
+    }
+    _REPAIR = {
+        "AC Repair", "Furnace Repair", "Heat Pump Repair", "Mini-Split Repair",
+        "Blower Motor Replacement", "Duct Repair", "Refrigerant Recharge",
+    }
+    df_full["job_category"] = df_full["job_type"].map(
+        lambda t: "Installation" if t in _INSTALL else ("Repair" if t in _REPAIR else "Maintenance")
+    )
+
 # ---------------------------------------------------------------------------
 # Sidebar — filters
 # ---------------------------------------------------------------------------
