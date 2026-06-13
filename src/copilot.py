@@ -11,7 +11,7 @@ from data_loader import load_jobs, summary_stats
 load_dotenv()
 
 
-def _get_api_key() -> str | None:
+def _get_api_key():
     key = os.environ.get("ANTHROPIC_API_KEY")
     if key:
         return key
@@ -145,7 +145,7 @@ def ask(question: str, df: pd.DataFrame = None) -> str:
 # RAG-powered training assistant
 # ---------------------------------------------------------------------------
 
-def ask_training(question: str) -> tuple[str, list[dict]]:
+def ask_training(question: str):
     """Answer an HVAC technical question using retrieved knowledge base chunks.
 
     Returns (answer_text, source_chunks) so the UI can show citations.
