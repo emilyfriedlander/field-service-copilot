@@ -116,7 +116,7 @@ def bench_cls(val: float, good: float, warn: float, higher_is_better: bool = Tru
 # Data loading
 # ---------------------------------------------------------------------------
 
-@st.cache_data
+@st.cache_data(ttl=3600)
 def get_data() -> pd.DataFrame:
     return load_jobs()
 
